@@ -12,25 +12,24 @@ from sys import exit
 import urllib.request
 import dotenv
 import telegram.ext as tg
-from queue import Queue  # Import Queue for update_queue
 
 from pyrogram import Client
 
 if os.path.exists("TorrentLeech-Gdrive.txt"):
-    with open("Torrentleech-Gdrive.txt", "r+") as f_d:
-        f_d.truncate(0)
+with open("Torrentleech-Gdrive.txt", "r+") as f_d:
+f_d.truncate(0)
 
 # the logging things
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]",
-    datefmt="%d-%b-%y %H:%M:%S",
-    handlers=[
-        RotatingFileHandler(
-            "Torrentleech-Gdrive.txt", maxBytes=50000000, backupCount=10
-        ),
-        logging.StreamHandler(),
-    ],
+level=logging.INFO,
+format="%(asctime)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]",
+datefmt="%d-%b-%y %H:%M:%S",
+handlers=[
+RotatingFileHandler(
+"Torrentleech-Gdrive.txt", maxBytes=50000000, backupCount=10
+),
+logging.StreamHandler(),
+],
 )
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -38,19 +37,20 @@ logging.getLogger("PIL").setLevel(logging.WARNING)
 
 LOGGER = logging.getLogger(__name__)
 
+user_specific_config=dict()
 user_specific_config = dict()
 
 dotenv.load_dotenv("config.env")
 
 # checking compulsory variable
 for imp in ["TG_BOT_TOKEN", "APP_ID", "API_HASH", "OWNER_ID", "AUTH_CHANNEL"]:
-    try:
-        value = os.environ[imp]
-        if not value:
-            raise KeyError
-    except KeyError:
-        LOGGER.critical(f"Oh...{imp} is missing from config.env ... fill that")
-        exit()
+try:
+value = os.environ[imp]
+if not value:
+raise KeyError
+except KeyError:
+LOGGER.critical(f"Oh...{imp} is missing from config.env ... fill that")
+exit()
 
 # The Telegram API things
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
@@ -78,10 +78,13 @@ RCLONE_CONFIG = os.environ.get("RCLONE_CONFIG", "")
 DESTINATION_FOLDER = os.environ.get("DESTINATION_FOLDER", "TorrentLeechX")
 
 #################### Telegram Settings ####################
+MAX_FILE_SIZE = 50000000 # Maximum file size to download from direct links/torrents
 MAX_FILE_SIZE = 50000000  # Maximum file size to download from direct links/torrents
 FREE_USER_MAX_FILE_SIZE = 50000000
+TG_MAX_FILE_SIZE = 2097152000 # Telegram maximum file upload size
 TG_MAX_FILE_SIZE = 2097152000  # Telegram maximum file upload size
 MAX_TG_SPLIT_FILE_SIZE = int(os.environ.get("MAX_TG_SPLIT_FILE_SIZE", 1072864000))
+MAX_MESSAGE_LENGTH = 4096 # maximum message length in Telegram
 MAX_MESSAGE_LENGTH = 4096  # maximum message length in Telegram
 # add config vars for the display progress
 FINISHED_PROGRESS_STR = os.environ.get("FINISHED_PROGRESS_STR", "█")
@@ -89,6 +92,7 @@ UN_FINISHED_PROGRESS_STR = os.environ.get("UN_FINISHED_PROGRESS_STR", "░")
 # default thumbnail to be used in the videos
 DEF_THUMB_NAIL_VID_S = os.environ.get("DEF_THUMB_NAIL_VID_S", "https://via.placeholder.com/90.jpg")
 EDIT_SLEEP_TIME_OUT = int(os.environ.get("EDIT_SLEEP_TIME_OUT", 15))
+CUSTOM_FILE_NAME = os.environ.get("CUSTOM_FILE_NAME", "") 
 CUSTOM_FILE_NAME = os.environ.get("CUSTOM_FILE_NAME", "")
 UPLOAD_AS_DOC = os.environ.get("UPLOAD_AS_DOC", "False")
 CUSTOM_FILE_CAPTION = os.environ.get('CUSTOM_FILE_CAPTION', '<code>{file_name}</code>')
@@ -132,6 +136,7 @@ SPEEDTEST = os.environ.get("SPEEDTEST", "speedtest")
 TSEARCH_COMMAND = os.environ.get("TSEARCH_COMMAND", "tshelp")
 MEDIAINFO_COMMAND = os.environ.get("MEDIAINFO_COMMAND", "mediainfo")
 TG_DL_COMMAND = os.environ.get("TG_DL_COMMAND", "tgdl")
+MANNUAL_GUP_COMMAND = os.environ.get("MANNUAL_GUP_COMMAND", "gupload") 
 MANNUAL_GUP_COMMAND = os.environ.get("MANNUAL_GUP_COMMAND", "gupload")
 ################################################
 
@@ -144,19 +149,21 @@ APPDRIVE_SHARED_DRIVE_ID = os.environ.get('APPDRIVE_SHARED_DRIVE_ID')
 APPDRIVE_FOLDER_ID = os.environ.get('APPDRIVE_FOLDER_ID')
 GDTOT_CRYPT = os.environ.get('GDTOT_CRYPT')
 
+ga_vars_list = ['APPDRIVE_EMAIL', 'APPDRIVE_PASS', 'GDTOT_CRYPT', 'APPDRIVE_SHARED_DRIVE_ID', 'APPDRIVE_FOLDER_ID' ]
 ga_vars_list = ['APPDRIVE_EMAIL', 'APPDRIVE_PASS', 'GDTOT_CRYPT', 'APPDRIVE_SHARED_DRIVE_ID', 'APPDRIVE_FOLDER_ID']
 
 for i in ga_vars_list:
-    try:
-        value = os.environ[i]
-        if not value:
-            raise KeyError
-    except KeyError:
-        LOGGER.warning(f"{i} is not provided!! The respective gdtot/appdrive bypass will not work!!!")
+try:
+value = os.environ[i]
+if not value:
+raise KeyError
+except KeyError:
+LOGGER.warning(f"{i} is not provided!! The respective gdtot/appdrive bypass will not work!!!")
 #########################################
 
 # dict to control uploading and downloading
 gDict = defaultdict(lambda: [])
+# user settings dict #ToDo
 # user settings dict
 user_settings = defaultdict(lambda: {})
 gid_dict = defaultdict(lambda: [])
@@ -164,6 +171,14 @@ _lock = asyncio.Lock()
 
 # Rclone Config Via any raw url
 ###########################################################################
+try:                                                                      #
+    RCLONE_CONF_URL = os.environ.get('RCLONE_CONF_URL', "")               #
+    if len(RCLONE_CONF_URL) == 0:                                         #
+        RCLONE_CONF_URL = None                                            #
+    else:                                                                 #
+        urllib.request.urlretrieve(RCLONE_CONF_URL, '/app/rclone.conf')   #
+except KeyError:                                                          #
+    RCLONE_CONF_URL = None                                                #
 try:
     RCLONE_CONF_URL = os.environ.get('RCLONE_CONF_URL', "")
     if len(RCLONE_CONF_URL) == 0:
@@ -175,23 +190,26 @@ except KeyError:
 ###########################################################################
 
 def multi_rclone_init():
-    if RCLONE_CONFIG:
-        LOGGER.warning("Don't use this var now, put your rclone.conf in root directory")
-    if not os.path.exists("rclone.conf"):
-        LOGGER.warning("Sed, No rclone.conf found in root directory")
-        return
-    if not os.path.exists("rclone_bak.conf"):  # backup rclone.conf file
+if RCLONE_CONFIG:
+LOGGER.warning("Don't use this var now, put your rclone.conf in root directory")
+if not os.path.exists("rclone.conf"):
+LOGGER.warning("Sed, No rclone.conf found in root directory")
+return
+if not os.path.exists("rclone_bak.conf"):  # backup rclone.conf file
+        with open("rclone_bak.conf", "w+", newline="\n", encoding="utf-8") as fole:
         with open("rclone_bak.conf", "w+",
                   newline="\n", encoding="utf-8") as fole:
-            with open("rclone.conf", "r") as f:
-                fole.write(f.read())
-        LOGGER.info("rclone.conf backuped to rclone_bak.conf!")
+with open("rclone.conf", "r") as f:
+fole.write(f.read())
+LOGGER.info("rclone.conf backuped to rclone_bak.conf!")
+
 
 multi_rclone_init()
 
 # Initialize the bot
 app = Client("LeechBot", bot_token=TG_BOT_TOKEN, api_id=APP_ID, api_hash=API_HASH, workers=343)
 
-update_queue = Queue()  # Create the update_queue
-updater = tg.Updater(TG_BOT_TOKEN, update_queue=update_queue)
-dispatcher = tg.Dispatcher(updater.bot, update_queue)  # Correctly initialize the dispatcher
+updater = tg.Updater(token=TG_BOT_TOKEN)
+updater = tg.Updater(TG_BOT_TOKEN)
+bot = updater.bot
+dispatcher = updater.dispatcher

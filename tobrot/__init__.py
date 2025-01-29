@@ -12,6 +12,7 @@ from sys import exit
 import urllib.request
 import dotenv
 import telegram.ext as tg
+from queue import Queue  # Import Queue for update_queue
 
 from pyrogram import Client
 
@@ -191,6 +192,7 @@ multi_rclone_init()
 # Initialize the bot
 app = Client("LeechBot", bot_token=TG_BOT_TOKEN, api_id=APP_ID, api_hash=API_HASH, workers=343)
 
-updater = tg.Updater(TG_BOT_TOKEN)
+update_queue = Queue()  # Create the update_queue
+updater = tg.Updater(TG_BOT_TOKEN, update_queue=update_queue)
 bot = updater.bot
 dispatcher = updater.dispatcher

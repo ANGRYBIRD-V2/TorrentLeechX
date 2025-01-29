@@ -194,5 +194,4 @@ app = Client("LeechBot", bot_token=TG_BOT_TOKEN, api_id=APP_ID, api_hash=API_HAS
 
 update_queue = Queue()  # Create the update_queue
 updater = tg.Updater(TG_BOT_TOKEN, update_queue=update_queue)
-bot = updater.bot
-dispatcher = updater.dispatcher
+dispatcher = tg.Dispatcher(updater.bot, update_queue)  # Correctly initialize the dispatcher
